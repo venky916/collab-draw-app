@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import { middleware } from "./middleware";
 import { JWT_SECRET } from "@repo/backend-common/config";
 import { CreateUserSchema } from "@repo/common/types";
+import { prismaClient } from "@repo/db/client"
+
 const app = express();
 
 app.use(express.json());
@@ -44,6 +46,10 @@ app.post("/room", middleware, (req, res) => {
     res.json({
         roomId: 123
     })
+})
+
+app.get("/room/:id",middleware,(req,res)=>{
+    
 })
 
 app.listen(3001, () => {
