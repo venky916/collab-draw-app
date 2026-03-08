@@ -1,55 +1,123 @@
+import 'dotenv/config'
 import express from "express";
 import jwt from "jsonwebtoken";
 import { middleware } from "./middleware";
 import { JWT_SECRET } from "@repo/backend-common/config";
-import { CreateUserSchema } from "@repo/common/types";
-import { prismaClient } from "@repo/db/client"
+import { createRoomSchema, CreateUserSchema, SignInSchema } from "@repo/common/types";
+import { prisma } from "@repo/db"
 
 const app = express();
 
 app.use(express.json());
 
-app.post("/signup", (req, res) => {
+app.post("/signup", async (req, res) => {
 
-    const { email, name, password } = req.body;
+    // const { email, name, password } = req.body;
+    // console.log(email,name,password)
 
     // zod validation
-    const data = CreateUserSchema.safeParse(req.body);
+    const parsedData = CreateUserSchema.safeParse(req.body);
 
-    if (!data.success) {
-        return res.status(400).json({ message: data.error.message })
+    if (!parsedData.success) {
+        return res.status(400).json({ message: parsedData.error.message })
     }
     // check in db
+    // console.log(parsedData)
+    try {
+        const user = await prisma.user.create({
+            data: {
+                email: parsedData.data.email,
+                name: parsedData.data.name,
+                // Todo hash password
+                password: parsedData.data.password
+            }
+        })
+        console.log(user)
+        res.json({
+            token: jwt.sign({ userId: user?.id }, JWT_SECRET)
+        })
+    } catch (error) {
+        res.status(411).json({
+            message: error
+        })
+    }
+
     // if not in db add in db and send token
-
-
 })
 
-app.post("/signin", (req, res) => {
+app.post("/signin", async (req, res) => {
 
-    const { email, password } = req.body;
+    // const { email, password } = req.body;
     // zod validation
+    const parsedData = SignInSchema.safeParse(req.body);
+    if (!parsedData.success) {
+        return res.status(400).json({ message: parsedData.error.message })
+    }
     // check in db
     // if in db -> send token
-    const userId = 1;
-    const token = jwt.sign({ userId }, JWT_SECRET)
+    const user = await prisma.user.findUnique({
+        where: {
+            email: parsedData.data.email,
+            password: parsedData.data.password
+        }
+    })
+    console.log(user)
+    if (!user) {
+        return res.status(403).json({ message: "unauthorized" })
+    }
+    const token = jwt.sign({ userId: user?.id }, JWT_SECRET)
 
     res.json({ token })
 })
 
 
-app.post("/room", middleware, (req, res) => {
+app.post("/room", middleware, async (req, res) => {
 
     // middleware check authentication
+    const parsedData = createRoomSchema.safeParse(req.body);
+    if (!parsedData.success) {
+        return res.status(400).json({ message: parsedData.error.message })
+    }
 
-    // if true-> create room and send room id and talk with ws-server fro creating room
-    res.json({
-        roomId: 123
-    })
+    // @ts-ignore
+    const userId = req?.userId
+
+    try {
+        const room = await prisma.room.create({
+            data: {
+                slug: parsedData.data.roomName,
+                adminId: userId
+            }
+        })
+
+        // if true-> create room and send room id and talk with ws-server fro creating room
+        res.json({
+            roomId: room.id
+        })
+    } catch (error) {
+        res.status(411).json({
+            message: error
+        })
+    }
+    
 })
 
-app.get("/room/:id",middleware,(req,res)=>{
-    
+app.get("/room/:id", middleware, async (req, res) => {
+
+    // const data = createRoomSchema.safeParse(req.params);
+    // if (!data.success) {
+    //     return res.status(400).json({ message: data.error.message })
+    // }
+
+    // // @ts-ignore
+    // const userId = req?.userId
+    // const room = await prisma.room.create({
+    //     data: {
+    //         roomId: data.,
+    //         userId
+    //     }
+    // })
+
 })
 
 app.listen(3001, () => {
