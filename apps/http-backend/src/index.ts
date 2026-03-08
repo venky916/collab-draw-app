@@ -99,24 +99,25 @@ app.post("/room", middleware, async (req, res) => {
             message: error
         })
     }
-    
+
 })
 
-app.get("/room/:id", middleware, async (req, res) => {
+app.get("/chats/:id", middleware, async (req, res) => {
 
-    // const data = createRoomSchema.safeParse(req.params);
-    // if (!data.success) {
-    //     return res.status(400).json({ message: data.error.message })
-    // }
+    const roomId = Number(req.params.id)
+    console.log(roomId)
 
-    // // @ts-ignore
-    // const userId = req?.userId
-    // const room = await prisma.room.create({
-    //     data: {
-    //         roomId: data.,
-    //         userId
-    //     }
-    // })
+    const messages = await prisma.chat.findMany({
+        where: {
+            roomId: roomId
+        },
+        orderBy: {
+            id: "desc"
+        },
+        take: 50
+    })
+
+    res.json(messages)
 
 })
 
