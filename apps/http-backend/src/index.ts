@@ -107,17 +107,50 @@ app.get("/chats/:id", middleware, async (req, res) => {
     const roomId = Number(req.params.id)
     console.log(roomId)
 
-    const messages = await prisma.chat.findMany({
-        where: {
-            roomId: roomId
-        },
-        orderBy: {
-            id: "desc"
-        },
-        take: 50
-    })
+    try {
+        const messages = await prisma.chat.findMany({
+            where: {
+                roomId: roomId
+            },
+            orderBy: {
+                id: "desc"
+            },
+            take: 50
+        })
+        console.log(messages)
 
-    res.json(messages)
+        res.json(messages)
+    } catch (error) {
+        console.log(error)
+        res.status(411).json({
+            message: error
+        })
+    }
+
+})
+
+app.get("/room/:slug", middleware, async (req, res) => {
+
+    const slug = req.params.slug
+    if (!slug) return res.status(400).json({ message: "slug required" })
+
+    try {
+        const room = await prisma.room.findFirst({
+            where: {
+                slug: slug as string
+            }
+        })
+
+        if (!room) {
+            return res.status(404).json({ message: "Room not found" })
+        }
+
+        res.json(room)
+    } catch (error) {
+        res.status(500).json({
+            message: error instanceof Error ? error.message : "Internal server error"
+        })
+    }
 
 })
 

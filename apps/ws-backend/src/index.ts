@@ -7,7 +7,7 @@ import { prisma } from "@repo/db"
 const wss = new WebSocketServer({ port: 8080 });
 interface User {
     ws: WebSocket,
-    rooms: string[],
+    rooms: Number[],
     userId: string
 }
 
@@ -64,7 +64,7 @@ wss.on('connection', function connection(ws, request) {
             if (!user) {
                 return null
             }
-            user.rooms.push(roomId)
+            user.rooms.push(Number(roomId))
         }
 
         if (parsedData.type === "leave_room") {
