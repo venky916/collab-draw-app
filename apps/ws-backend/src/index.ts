@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import cors from "cors"
 import { WebSocketServer, WebSocket } from 'ws';
 import jwt, { JwtPayload } from "jsonwebtoken"
 import { JWT_SECRET } from '@repo/backend-common/config';
@@ -7,7 +8,7 @@ import { prisma } from "@repo/db"
 const wss = new WebSocketServer({ port: 8080 });
 interface User {
     ws: WebSocket,
-    rooms: Number[],
+    rooms: string[],
     userId: string
 }
 
@@ -17,7 +18,6 @@ const users: User[] = []
 function CheckUser(token: string): string | null {
     try {
         const decoded = jwt.verify(token, JWT_SECRET)
-        console.log(decoded)
 
         if (typeof decoded === "string") {
             return null
@@ -45,14 +45,18 @@ wss.on('connection', function connection(ws, request) {
     const queryParam = new URLSearchParams(url.split("?")[1]);
     const token = queryParam.get("token") || "";
     const userId = CheckUser(token)
-    console.log(userId)
 
     if (!userId) {
         ws.close()
         return null
     }
 
+    //check if user exist
+    // if (!users.find(user => user.userId === userId)) {
+    // }
+
     users.push({ ws, rooms: [], userId })
+
 
     ws.on('message', async function message(data) {
 
@@ -60,16 +64,18 @@ wss.on('connection', function connection(ws, request) {
 
         if (parsedData.type === "join_room") {
             const { roomId } = parsedData
-            const user = users.find(user => user.userId === userId)
+            // const user = users.find(user => user.userId === userId)
+            const user = users.find(user => user.ws === ws)
             if (!user) {
                 return null
             }
-            user.rooms.push(Number(roomId))
+            user.rooms.push(roomId)
         }
 
         if (parsedData.type === "leave_room") {
             const { roomId } = parsedData
-            const user = users.find(user => user.userId === userId)
+            // const user = users.find(user => user.userId === userId)
+            const user = users.find(user => user.ws === ws)
             if (!user) {
                 return null
             }
@@ -78,7 +84,8 @@ wss.on('connection', function connection(ws, request) {
 
         if (parsedData.type === "chat") {
             const { message, roomId } = parsedData
-            const user = users.find(user => user.userId === userId)
+            // const user = users.find(user => user.userId === userId)
+            const user = users.find(user => user.ws === ws)
             if (!user) {
                 return null
             }
@@ -86,10 +93,11 @@ wss.on('connection', function connection(ws, request) {
             await prisma.chat.create({
                 data: {
                     message,
-                    roomId,
+                    roomId: Number(roomId),
                     userId
                 }
             })
+            console.log(typeof roomId, roomId, user.rooms)
             users.forEach(user => {
                 if (user.rooms.includes(roomId)) {
                     user.ws.send(JSON.stringify({ type: "chat", message, roomId }))

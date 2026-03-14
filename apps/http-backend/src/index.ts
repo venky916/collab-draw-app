@@ -1,4 +1,5 @@
 import 'dotenv/config'
+import cors from "cors"
 import express from "express";
 import jwt from "jsonwebtoken";
 import { middleware } from "./middleware";
@@ -9,6 +10,7 @@ import { prisma } from "@repo/db"
 const app = express();
 
 app.use(express.json());
+app.use(cors())
 
 app.post("/signup", async (req, res) => {
 
